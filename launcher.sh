@@ -22,6 +22,31 @@ export PATH=$PWD/bin:$PATH
 
 scale=$(./utils/get-scale.sh 2>/dev/null )
 
+
+###################################################
+# Handle customUserAgent
+####################################################
+
+CONFIGFILE="/home/phablet/.config/min.pparent/Min/settings.json"
+UA="Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36"
+json=$(<"$CONFIGFILE")
+alreadydone=0;
+
+case "$json" in
+  *\"customUserAgent\"* )
+    alreadydone=1;
+    ;;
+    
+esac
+
+if [ "$alreadydone" -eq "0" ]; then
+    newjson="${json%?}"
+    newjson="$newjson,\"customUserAgent\":\"$UA\"}"
+    printf '%s\n' "$newjson" > "$CONFIGFILE"
+fi
+
+
+
 dpioptions="--high-dpi-support=1 --force-device-scale-factor=$scale --grid-unit-px=$GRID_UNIT_PX"
 sandboxoptions="--no-sandbox"
 gpuoptions="--use-gl=egl --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist --enable-features=UseSkiaRenderer,VaapiVideoDecoder --disable-frame-rate-limit --disable-gpu-vsync --enable-oop-rasterization"
