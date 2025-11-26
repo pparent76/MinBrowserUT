@@ -1,0 +1,16 @@
+{
+    "name": "min.pparent",
+    "description": "Package for the min browser",
+    "architecture": "@CLICK_ARCH@",
+
+    "title": "Min browser",
+    "hooks": {
+        "min": {
+            "apparmor": "min.apparmor",
+            "desktop":  "min.desktop"
+        }
+    },
+    "version": "1.35.2",
+    "maintainer": "Pierre Parent <pro@pierre-parent.fr>",
+    "framework" : "ubuntu-touch-24.04-1.x"
+}

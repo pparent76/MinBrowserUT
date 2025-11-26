@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Min browser
+Comment=Min browser
+Exec=./launcher.sh
+Terminal=false
+Type=Application
+Icon=icon.png
+X-Ubuntu-Touch=true
+X-Lomiri-Touch=true
+
+X-Ubuntu-Splash-Color=#3943fd
+X-Ubuntu-Splash-Image=icon-splash.png
+
+Name[en_US]=Signal
