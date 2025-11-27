@@ -10,7 +10,7 @@
             "desktop":  "min.desktop"
         }
     },
-    "version": "1.35.2-3",
+    "version": "1.35.2-4",
     "maintainer": "Pierre Parent <pro@pierre-parent.fr>",
     "framework" : "ubuntu-touch-24.04-1.x"
 }

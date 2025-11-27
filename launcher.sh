@@ -33,7 +33,7 @@ gpuoptions="--use-gl=egl --enable-gpu-rasterization --enable-zero-copy --ignore-
 CONFIGFILE="/home/phablet/.config/min.pparent/Min/settings.json"
 utils/mkdir.sh
 UA="Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36"
-newjson="{\"customUserAgent\":\"$UA\"}"
+newjson="{\"filtering\":{\"blockingLevel\":2,\"contentTypes\":[],\"exceptionDomains\":[]},\"updateNotificationsEnabled\":false,\"collectUsageStats\":false,\"useSeparateTitlebar\":true,\"customUserAgent\":\"$UA\"}"
 printf '%s\n' "$newjson" > "$CONFIGFILE"
 
 
