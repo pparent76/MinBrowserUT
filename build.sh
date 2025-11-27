@@ -131,11 +131,13 @@ cp ${BUILD_DIR}/pkg3_extract_chsdjksd/usr/share/icons/hicolor/256x256/apps/min.p
 
 mkdir -p "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/sleep.sh "$INSTALL_DIR/utils/"
+cp ${ROOT}/utils/mkdir.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/get-scale.sh "$INSTALL_DIR/utils/"
 
 cp ${BUILD_DIR}/xdg-open/build/xdg-open $INSTALL_DIR/bin/
 
 chmod +x $INSTALL_DIR/utils/sleep.sh
+chmod +x $INSTALL_DIR/utils/mkdir.sh
 chmod +x $INSTALL_DIR/utils/get-scale.sh
 chmod +x $INSTALL_DIR/launcher.sh
 chmod +x $INSTALL_DIR/opt/Min/min
