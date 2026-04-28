@@ -43,13 +43,17 @@ gpuoptions="--use-gl=egl --enable-gpu-rasterization --enable-zero-copy --ignore-
 ####################################################
 CONFIGFILE="/home/phablet/.config/min.pparent/Min/settings.json"
 utils/mkdir.sh /home/phablet/.config/min.pparent/Min/
-UA="Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36"
+UA="Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/146.0.0.0 Safari/537.36"
 newjson="{\"filtering\":{\"blockingLevel\":2,\"contentTypes\":[],\"exceptionDomains\":[]},\"updateNotificationsEnabled\":false,\"collectUsageStats\":false,\"useSeparateTitlebar\":true,\"customUserAgent\":\"$UA\"}"
 printf '%s\n' "$newjson" > "$CONFIGFILE"
 
 
-#Open a dummy qt gui app to realease lomiri from its waiting
-( utils/sleep.sh; $PWD/bin/xdg-open )&
+#Start a dummy Qt app called "placeholder-killer" to realease lomiri from its waiting, if necessary (not necessary with latest lomiri)
+echo "df84ff50557373cd882941cafb7ad344  /lib/aarch64-linux-gnu/liblomiri-private.so"| bin/md5sum -c -
+if [ "$?" -ne "0" ]; then
+( utils/sleep.sh; $PWD/bin/placeholder-killer )&
+fi
+
 ( utils/filedialog-deamon.sh $$ )&
 
 initpwd=$PWD

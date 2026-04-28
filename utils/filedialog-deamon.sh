@@ -1,11 +1,17 @@
 #!/bin/bash
 
+echo "df84ff50557373cd882941cafb7ad344  /lib/aarch64-linux-gnu/liblomiri-private.so"| md5sum -c -
+#If we are running the latest version of lomiri we'll use Xcb to display ContentHub Windows
+if [ "$?" -eq "0" ]; then
+    export QT_QPA_PLATFORM=xcb
+fi
+
 PID=$1
 needtoexport=0;
 echo "" > /home/phablet/.cache/min.pparent/exportlock
-rm /home/phablet/.local/share/min.pparent/recently-used.xbel
-rm -rvf /home/phablet/.cache/min.pparent/downloads/*
 allreadynavigated=0
+allreadyseenwindow=0
+firstimport=1;
 
 xev -root  | while read -r _; do
 
@@ -17,6 +23,19 @@ xev -root  | while read -r _; do
     for window in $windows ; do
         count=$(( count + 1 ))
     done
+    
+    if [ "$count" -eq "0" ]; then
+        windows=$(xdotool search --all --pid $PID)
+        for window in $windows ; do
+            count=$(( count + 1 ))
+        done
+        if [ "$count" -eq "0" ]&&  [ "$allreadyseenwindow" -eq "1" ] ; then
+            echo "No window left exiting...";
+            exit 0;
+        fi
+    else
+        allreadyseenwindow=1;
+    fi
     
     if [ "$count" -gt "1" ]; then
         echo "more than one window"
@@ -31,30 +50,47 @@ xev -root  | while read -r _; do
                 
                 if [ "$window_min_height" -gt "753" ]; then
                     echo "Export File"
+                    for file in /home/phablet/.cache/min.pparent/downloads/* ; do
+                        utils/rm.sh $file
+                    done
                     xdotool windowfocus $window
-                    xdotool key --window $window KP_Enter
+                    xdotool key --window $window alt+s
                     needtoexport=$window
                 else
                     echo "Import File"
-                    qmlscene utils/upload-helper/qml/ImportPage.qml -I  utils/upload-helper/;
-                    while read -t 0.01 -r _; do :; done
+                    qmlscene utils/upload-helper/qml/ImportPage.qml -I  utils/upload-helper/ &
+                    pid=$!
+                    while kill -0 "$pid" 2>/dev/null; do
+                        while read -t 0.01 -r _; do :; done
+                    done
                     xdotool windowfocus $window
-                    xdotool sleep 0.1
-                    xdotool key  --window $window Alt+d
-                    xdotool sleep 0.5
-                    xdotool key  --window $window F6
-                    xdotool sleep 0.1
-                    xdotool key  --window $window F6
-                    xdotool sleep 0.1
-                    xdotool key  --window $window KP_Enter
-                    xdotool sleep 0.1
-                    xdotool key  --window $window KP_Enter                    
+                    if [ "$firstimport" -eq "1" ]; then
+                        firstimport=0;
+                        xdotool key  --window $window F6
+                        xdotool sleep 0.1
+                        bin/xdotool key  --window $window Tab
+                        xdotool sleep 0.1
+                        xdotool key  --window $window KP_Enter
+                        xdotool sleep 0.5 
+                        xdotool key  --window $window F6
+                        xdotool sleep 0.3
+                    else
+                        bin/xdotool key  --window $window --repeat 2 F6
+                        xdotool sleep 0.3
+                    fi
+                    xdotool key  --window $window alt+o
+                  
                     needtoexport=0
                     while read -t 0.01 -r _; do :; done
-                    xdotool sleep 5
-                    while read -t 0.01 -r _; do :; done
+                    xdotool sleep 1
                     echo "">/home/phablet/.cache/min.pparent/downloads/00000000.png
-                    rm /home/phablet/.local/share/min.pparent/recently-used.xbel
+                    xdotool sleep 4
+                    while read -t 0.01 -r _; do :; done
+                    for file in /home/phablet/.cache/min.pparent/downloads/* ; do
+                        utils/rm.sh $file
+                    done
+                    echo "">/home/phablet/.cache/min.pparent/downloads/00000000.png
+                    utils/rm.sh /home/phablet/.local/share/min.pparent/recently-used.xbel
                 fi
             fi
         done    
@@ -68,10 +104,9 @@ xev -root  | while read -r _; do
                      read lock < /home/phablet/.cache/min.pparent/exportlock
                     if [ "$lock" != "lock" ]; then
                         echo "lock" > /home/phablet/.cache/min.pparent/exportlock
-                       ( qmlscene utils/download-helper/qml/ExportPage.qml -I  utils/download-helper/; echo "" >/home/phablet/.cache/min.pparent/exportlock)  &
+                       ( qmlscene utils/download-helper/qml/ExportPage.qml -I  utils/download-helper/; echo "" >/home/phablet/.cache/min.pparent/exportlock; echo "">/home/phablet/.cache/min.pparent/downloads/00000000.png )  &
                        xdotool sleep 5;
-                       echo "">/home/phablet/.cache/min.pparent/downloads/00000000.png
-                       rm /home/phablet/.local/share/min.pparent/recently-used.xbel
+                       utils/rm.sh /home/phablet/.local/share/min.pparent/recently-used.xbel
                     fi
                 fi
     fi

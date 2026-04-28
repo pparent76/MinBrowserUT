@@ -28,6 +28,13 @@ cmake ..
 make
 mkdir -p $INSTALL_DIR/bin/
 
+cp -r ${ROOT}/utils/placeholder-killer/ ${BUILD_DIR}/
+cd ${BUILD_DIR}/placeholder-killer/
+mkdir -p build
+cd build
+cmake ..
+make
+
 # =================================================
 # STEP 6: Downloading maliit-inputcontext-gtk3
 # =================================================
@@ -73,7 +80,7 @@ DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -a arm64
 echo "[3/6] Install dependencies..."
 
 cd ${BUILD_DIR}
-DEPENDENCIES="libhybris-utils xdotool libmaliit-glib2 libxdo3 x11-utils"
+DEPENDENCIES="libhybris-utils xdotool libmaliit-glib2 libxdo3 x11-utils libsecret-1-0"
 
 for dep in $DEPENDENCIES ; do
     apt download $dep:arm64
@@ -83,7 +90,13 @@ for dep in $DEPENDENCIES ; do
     dpkg-deb -x "${dep}.deb" "${dep}.deb_extract_chsdjksd"
 done
 
-URL3="https://github.com/minbrowser/min/releases/download/v1.35.2/min-1.35.2-arm64.deb"
+wget https://ports.ubuntu.com/pool/main/c/coreutils/coreutils_9.4-3ubuntu6_arm64.deb
+rm -rvf "coreutils_9.4-3ubuntu6_arm64.deb_extract_chsdjksd" || true
+mkdir "coreutils_9.4-3ubuntu6_arm64.deb_extract_chsdjksd"
+dpkg-deb -x "coreutils_9.4-3ubuntu6_arm64.deb" "coreutils_9.4-3ubuntu6_arm64.deb_extract_chsdjksd"
+
+
+URL3="https://github.com/minbrowser/min/releases/download/v1.35.5/min-1.35.5-arm64.deb"
 
 wget -q "$URL3" -O "${BUILD_DIR}/pkg3.deb"
 rm -rvf "pkg3_extract_chsdjksd" || true
@@ -156,6 +169,7 @@ cp *_extract_chsdjksd/usr/bin/xdotool "$INSTALL_DIR/bin/"
 cp *_extract_chsdjksd/usr/bin/getprop "$INSTALL_DIR/bin/"
 cp *_extract_chsdjksd/usr/bin/xprop "$INSTALL_DIR/bin/"
 cp *_extract_chsdjksd/usr/bin/xev "$INSTALL_DIR/bin/"
+cp *_extract_chsdjksd/usr/bin/md5sum "$INSTALL_DIR/bin/"
 cp ${BUILD_DIR}/xdg-open/build/xdg-open $INSTALL_DIR/bin/
 
 
@@ -172,6 +186,8 @@ cp -r ${BUILD_DIR}/download-helper/qml $INSTALL_DIR/utils/download-helper/
 mkdir -p $INSTALL_DIR/utils/download-helper/Pparent/DownloadHelper
 cp ${BUILD_DIR}/download-helper/qml-download-helper-module/build/libDownloadHelperPlugin.so $INSTALL_DIR/utils/download-helper/Pparent/DownloadHelper/
 cp ${BUILD_DIR}/download-helper/qml-download-helper-module/qmldir $INSTALL_DIR/utils/download-helper/Pparent/DownloadHelper/
+
+cp ${BUILD_DIR}/placeholder-killer/build/placeholder-killer $INSTALL_DIR/bin/
 
 mkdir $INSTALL_DIR/utils/upload-helper/
 cp -r ${BUILD_DIR}/upload-helper/qml $INSTALL_DIR/utils/upload-helper/
