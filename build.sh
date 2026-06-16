@@ -34,18 +34,25 @@ cd ${BUILD_DIR}/Min
 # STEP 2: APPLY PATCHES
 # ========================
 echo "[2/10] Applying patches"
-    #Patch to make the app responsive
-    if [ ! -e ".package.json.patch-applyed" ]; then
-        echo "Apply package.json.patch"
-        patch -p1 < ${ROOT}/patches/Min/package.json.patch
-        touch .package.json.patch-applyed
+    #Patch build
+    if [ ! -e ".fix-build.patch-applyed" ]; then
+        echo "Apply fix-build.patch"
+        patch -p1 < ${ROOT}/patches/Min/fix-build.patch
+        touch .fix-build.patch-applyed
     fi
+    
+    #Patch to fix the searchbar
+    if [ ! -e ".fix-searchbar.patch-applyed" ]; then
+        echo "Apply fix-searchbar.patch"
+        patch -p1 < ${ROOT}/patches/Min/fix-searchbar.patch
+        touch .fix-searchbar.patch-applyed
+    fi    
 
-    #Patch to make the app responsive
-    if [ ! -e ".buildDebian.patch-applyed" ]; then
-        echo "Apply package.json.patch"
-        patch -p1 < ${ROOT}/patches/Min/buildDebian.patch
-        touch .buildDebian.patch-applyed
+    #Patch to make the app compatible with contentHub
+    if [ ! -e ".contentHub.patch-applyed" ]; then
+        echo "Apply contentHub.patch"
+        patch -p1 < ${ROOT}/patches/Min/contentHub.patch
+        touch contentHub.patch-applyed
     fi
     
 # ==============================
@@ -100,6 +107,20 @@ echo "[3/10] Building Min..."
     pnpm run build
     node ./scripts/buildDebian.js
     echo "--->Done building"
+  else
+     echo "--->Build Min"
+#     
+#      PATH=$PATH:${BUILD_DIR}/.clickable/home/.local/share/pnpm/
+#      source ${BUILD_DIR}/.clickable/home/.bashrc
+#      export NVM_DIR="$HOME/.nvm"
+#      . "$NVM_DIR/nvm.sh" || true # This loads nvm    
+#      nvm use 24.15.0
+#      
+#     sleep 5;
+#     # This is the equivalent of 'npm run build-linux' with some adjustments
+#     pnpm run build
+#     node ./scripts/buildDebian.js
+#     echo "--->Done building"
   fi
 
   
@@ -238,7 +259,6 @@ mkdir -p "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/sleep.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/mkdir.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/get-scale.sh "$INSTALL_DIR/utils/"
-cp ${ROOT}/utils/filedialog-deamon.sh "$INSTALL_DIR/utils/"
 
 echo "Copying libraries dependencies..."
 cd ${BUILD_DIR}
@@ -267,7 +287,6 @@ chmod +x $INSTALL_DIR/utils/get-scale.sh
 chmod +x $INSTALL_DIR/launcher.sh
 chmod +x $INSTALL_DIR/opt/Min/min
 chmod +x $INSTALL_DIR/opt/Min/chrome_crashpad_handler
-chmod +x $INSTALL_DIR/utils/filedialog-deamon.sh
 
 mkdir $INSTALL_DIR/utils/download-helper/
 cp -r ${BUILD_DIR}/download-helper/qml $INSTALL_DIR/utils/download-helper/

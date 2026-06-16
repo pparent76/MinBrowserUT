@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
         GError *error = NULL;
 
         if (!g_spawn_command_line_async(
-                "qmlscene /opt/click.ubuntu.com/signalut.pparent/current/utils/download-helper/qml/ExportPage.qml -I /opt/click.ubuntu.com/signalut.pparent/current/utils/download-helper/",
+                "qmlscene /opt/click.ubuntu.com/min.pparent/current/utils/download-helper/qml/ExportPage.qml -I /opt/click.ubuntu.com/min.pparent/current/utils/download-helper/",
                 &error)) {
             fprintf(stderr, "Failed to launch qmlscene: %s\n", error->message);
             g_error_free(error);

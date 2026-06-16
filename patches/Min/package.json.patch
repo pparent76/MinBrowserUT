@@ -1,4 +1,0 @@
---- a/package.json
-+++ b/package.json
-64d63
-<     "postinstall": "node ./scripts/setupDevEnv.js",

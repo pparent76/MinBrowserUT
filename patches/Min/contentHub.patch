@@ -1,0 +1,73 @@
+--- a/main/main.js
++++ b/main/main.js
+96a97,163
+> let downloadHandlerRegistered = false
+> 
+> const handledSessions = new WeakSet()
+> 
+> const downloadDir =
+>   '/home/phablet/.cache/min.pparent/downloads';
+>     
+> function safeFilename(name) {
+>   return String(name || 'download')
+>     .replace(/[\/\\?%*:|"<>]/g, '_')
+>     .replace(/\s+/g, ' ')
+>     .trim();
+> }
+> 
+> function attachDownloadHandlerToSession (ses) {
+>   if (!ses || handledSessions.has(ses)) return
+>   handledSessions.add(ses)
+> 
+>   console.log('[download] handler attached to session:', ses.getStoragePath?.())
+> 
+>   ses.on('will-download', (event, item, wc) => {
+>     console.log('[download] WILL DOWNLOAD FIRED')
+> 
+>     try {
+>       const filename = safeFilename(item.getFilename() || 'download')
+>       const savePath = path.join(downloadDir, filename)
+> 
+>       console.log('[download] webContents:', wc?.id)
+>       console.log('[download] url:', item.getURL())
+>       console.log('[download] savePath:', savePath)
+> 
+>       item.setSavePath(savePath)
+> 
+>       item.once('done', async (_event, state) => {
+>         console.log('[download] done:', state)
+> 
+>         if (state !== 'completed') return
+> 
+>         const fileUrl = pathToFileURL(savePath).toString();
+>         console.log('[download] opening:', fileUrl);
+>         shell.openExternal(fileUrl).catch(err => {
+>           console.error('[download] openExternal failed:', err);
+>         });
+>       })
+>     } catch (err) {
+>       console.error('[download] failed:', err)
+>       event.preventDefault()
+>     }
+>   })
+> }
+> 
+> function registerDownloadHandler () {
+>   attachDownloadHandlerToSession(session.defaultSession)
+> 
+>   app.on('web-contents-created', (_event, wc) => {
+>     console.log('[wc created]', wc.id, wc.getType?.(), wc.getURL?.())
+> 
+>     attachDownloadHandlerToSession(wc.session)
+> 
+>     wc.on('did-attach-webview', (_event, webviewContents) => {
+>       console.log('[webview attached]', webviewContents.id, webviewContents.getURL?.())
+> 
+>       attachDownloadHandlerToSession(webviewContents.session)
+>     })
+>   })
+> }
+> 
+369a437,438
+>   
+>   registerDownloadHandler()

@@ -1,0 +1,6 @@
+--- a/js/searchbar/searchbar.js
++++ b/js/searchbar/searchbar.js
+37c37
+<     searchbarPlugins.run(text, searchbar.associatedInput, inputFlags)
+---
+>     searchbarPlugins.run(text, null, inputFlags)
