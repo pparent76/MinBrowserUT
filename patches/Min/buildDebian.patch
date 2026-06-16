@@ -1,0 +1,6 @@
+--- a/scripts/buildDebian.js
++++ b/scripts/buildDebian.js
+63c63
+< const arches = [Arch.x64, Arch.armv7l, Arch.arm64];
+---
+> const arches = [Arch.arm64];

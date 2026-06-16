@@ -13,13 +13,102 @@ PROJECT_NAME="min"
 INSTALL_DIR="${BUILD_DIR}/install"
 
 
+# ========================
+# STEP 1: CLONE SIGNAL-DESKTOP
+# ========================
+echo "[1/10] Download Min source from github"
+
+cd ${BUILD_DIR}
+min_download_url=https://github.com/minbrowser/min/archive/refs/tags/v1.35.5.tar.gz
+
+if [ ! -e "Min" ]; then
+    mkdir -p "Min"
+    wget -O /tmp/min.tar.gz "$min_download_url"
+    tar -xzf /tmp/min.tar.gz -C "Min" --strip-components=1
+fi
+
+cd ${BUILD_DIR}/Min
+
+
+# ========================
+# STEP 2: APPLY PATCHES
+# ========================
+echo "[2/10] Applying patches"
+    #Patch to make the app responsive
+    if [ ! -e ".package.json.patch-applyed" ]; then
+        echo "Apply package.json.patch"
+        patch -p1 < ${ROOT}/patches/Min/package.json.patch
+        touch .package.json.patch-applyed
+    fi
+
+    #Patch to make the app responsive
+    if [ ! -e ".buildDebian.patch-applyed" ]; then
+        echo "Apply package.json.patch"
+        patch -p1 < ${ROOT}/patches/Min/buildDebian.patch
+        touch .buildDebian.patch-applyed
+    fi
+    
+# ==============================
+# STEP 3: Build Signal-Desktop
+# ==============================
+echo "[3/10] Building Min..."
+
+ if [ ! -f ${BUILD_DIR}/Min/dist/app/min-1.35.5-arm64.deb ]; then
+    PATH=$PATH:${BUILD_DIR}/.clickable/home/.local/share/pnpm/
+    
+    echo "---> Installing nvm"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash || true
+    export NVM_DIR="$HOME/.nvm"
+    echo "---> load nvm: $NVM_DIR"
+    . "$NVM_DIR/nvm.sh" || true # This loads nvm
+
+    echo "---> nvm install 24.15.0"
+    nvm install 24.15.0
+    nvm use 24.15.0
+    node -v
+    
+    echo "---> pnpm install"
+    curl -fsSL https://get.pnpm.io/install.sh | env SHELL=bash sh -
+    source ${BUILD_DIR}/.clickable/home/.bashrc
+
+    #pnpm add -g node-gyp
+    pnpm -v
+  
+    echo "--->pnpm config"
+    pnpm dlx node-gyp --version
+
+    pnpm config set node-linker hoisted --location=project
+    pnpm store prune
+    
+    export npm_config_platform=linux
+    export npm_config_arch=arm64
+    export npm_config_target_platform=linux
+    export npm_config_target_arch=arm64
+    export ELECTRON_INSTALL_ARCH=arm64
+    export ESBUILD_ARCH=arm64
+    export CI=true
+    export PNPM_CONFIRM_MODULES_PURGE=false
+
+    echo "--->pnpm Install"
+    sleep 5
+    
+    pnpm install --dangerously-allow-all-builds
+    
+    echo "--->Build Min"
+    sleep 5;
+    # This is the equivalent of 'npm run build-linux' with some adjustments
+    pnpm run build
+    node ./scripts/buildDebian.js
+    echo "--->Done building"
+  fi
+
   
   
 
 # ===================================
-# STEP 5: BUILD THE FAKE xdg-open
+# STEP 4: BUILD THE FAKE xdg-open
 # ===================================
-echo "[1/6] Building fake xdg-open ..."
+echo "[4/10] Building fake xdg-open ..."
 cp -r ${ROOT}/utils/xdg-open/ ${BUILD_DIR}/
 cd ${BUILD_DIR}/xdg-open/
 mkdir -p build
@@ -36,9 +125,9 @@ cmake ..
 make
 
 # =================================================
-# STEP 6: Downloading maliit-inputcontext-gtk3
+# STEP 5: Downloading maliit-inputcontext-gtk3
 # =================================================
-echo "[2/6] Building maliit-inputcontext-gtk3 and download dependencies..."
+echo "[5/10] Building maliit-inputcontext-gtk3 and download dependencies..."
 
 
 PKGNAME="maliit-inputcontext-gtk"
@@ -77,7 +166,7 @@ DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -a arm64
 # =================================================
 # STEP 6: Install dependencies
 # =================================================
-echo "[3/6] Install dependencies..."
+echo "[6/10] Install dependencies..."
 
 cd ${BUILD_DIR}
 DEPENDENCIES="libhybris-utils xdotool libmaliit-glib2 libxdo3 x11-utils libsecret-1-0"
@@ -96,9 +185,8 @@ mkdir "coreutils_9.4-3ubuntu6_arm64.deb_extract_chsdjksd"
 dpkg-deb -x "coreutils_9.4-3ubuntu6_arm64.deb" "coreutils_9.4-3ubuntu6_arm64.deb_extract_chsdjksd"
 
 
-URL3="https://github.com/minbrowser/min/releases/download/v1.35.5/min-1.35.5-arm64.deb"
 
-wget -q "$URL3" -O "${BUILD_DIR}/pkg3.deb"
+cp ${BUILD_DIR}/Min/dist/app/min-1.35.5-arm64.deb "${BUILD_DIR}/pkg3.deb"
 rm -rvf "pkg3_extract_chsdjksd" || true
 mkdir "pkg3_extract_chsdjksd"
 dpkg-deb -x "pkg3.deb" "pkg3_extract_chsdjksd"
@@ -107,7 +195,7 @@ dpkg-deb -x "pkg3.deb" "pkg3_extract_chsdjksd"
 # ===================================
 # STEP 7: BUILD QML modules
 # ===================================
-echo "[4/6] Building QML modules ..."
+echo "[7/10] Building QML modules ..."
 rm -rvf ${BUILD_DIR}/download-helper
 cp -r ${ROOT}/utils/download-helper/ ${BUILD_DIR}/download-helper
 cd ${BUILD_DIR}/download-helper/qml-download-helper-module/
@@ -127,7 +215,7 @@ cmake --build .
 # ==============================
 # STEP 6: Copying files
 # ==============================  
-echo "[5/6] Copying files..." 
+echo "[8/10] Copying files..." 
 mkdir -p "$INSTALL_DIR/opt/"
 cp -r ${BUILD_DIR}/pkg3_extract_chsdjksd/opt/Min "$INSTALL_DIR/opt/" || true
 
@@ -201,7 +289,7 @@ cp $WORKDIR_MALIIT/maliit-inputcontext-gtk-$VERSION/builddir/gtk3/gtk-3.0/im-mal
 # ========================
 # STEP 7: BUILD THE CLICK PACKAGE
 # ========================
-echo "[6/6] Building click package..."
+echo "[9/10] Building click package..."
 # click build "$INSTALL_DIR"
 
 echo "✅ Preparation done, building the .click package."
