@@ -1,73 +1,298 @@
 --- a/main/main.js
 +++ b/main/main.js
-96a97,163
-> let downloadHandlerRegistered = false
-> 
-> const handledSessions = new WeakSet()
-> 
-> const downloadDir =
->   '/home/phablet/.cache/min.pparent/downloads';
->     
-> function safeFilename(name) {
->   return String(name || 'download')
->     .replace(/[\/\\?%*:|"<>]/g, '_')
->     .replace(/\s+/g, ' ')
->     .trim();
-> }
-> 
-> function attachDownloadHandlerToSession (ses) {
->   if (!ses || handledSessions.has(ses)) return
->   handledSessions.add(ses)
-> 
->   console.log('[download] handler attached to session:', ses.getStoragePath?.())
-> 
->   ses.on('will-download', (event, item, wc) => {
->     console.log('[download] WILL DOWNLOAD FIRED')
-> 
->     try {
->       const filename = safeFilename(item.getFilename() || 'download')
->       const savePath = path.join(downloadDir, filename)
-> 
->       console.log('[download] webContents:', wc?.id)
->       console.log('[download] url:', item.getURL())
->       console.log('[download] savePath:', savePath)
-> 
->       item.setSavePath(savePath)
-> 
->       item.once('done', async (_event, state) => {
->         console.log('[download] done:', state)
-> 
->         if (state !== 'completed') return
-> 
->         const fileUrl = pathToFileURL(savePath).toString();
->         console.log('[download] opening:', fileUrl);
->         shell.openExternal(fileUrl).catch(err => {
->           console.error('[download] openExternal failed:', err);
->         });
->       })
->     } catch (err) {
->       console.error('[download] failed:', err)
->       event.preventDefault()
->     }
->   })
-> }
-> 
-> function registerDownloadHandler () {
->   attachDownloadHandlerToSession(session.defaultSession)
-> 
->   app.on('web-contents-created', (_event, wc) => {
->     console.log('[wc created]', wc.id, wc.getType?.(), wc.getURL?.())
-> 
->     attachDownloadHandlerToSession(wc.session)
-> 
->     wc.on('did-attach-webview', (_event, webviewContents) => {
->       console.log('[webview attached]', webviewContents.id, webviewContents.getURL?.())
-> 
->       attachDownloadHandlerToSession(webviewContents.session)
->     })
->   })
-> }
-> 
-369a437,438
->   
->   registerDownloadHandler()
+@@ -3,2 +3,6 @@
+ const path = require('path')
++const { execFile } = require('node:child_process');
++const { readFile, stat } = require('node:fs/promises');
++const { ipcMain } = require('electron');
++const { basename, extname } = require('node:path');
+ 
+@@ -96,2 +100,144 @@
+ 
++let downloadHandlerRegistered = false
++
++const handledSessions = new WeakSet()
++
++
++
++//Handle import files
++ipcMain.handle('pick-file', async () => {
++  const MIME_BY_EXT = {
++    '.jpg': 'image/jpeg',
++    '.jpeg': 'image/jpeg',
++    '.png': 'image/png',
++    '.gif': 'image/gif',
++    '.webp': 'image/webp',
++    '.heic': 'image/heic',
++    '.pdf': 'application/pdf',
++    '.txt': 'text/plain',
++    '.apng': 'image/apng',
++    '.avif': 'image/avif',
++    '.bmp': 'image/bmp',
++    '.svg': 'image/svg+xml',
++    '.mp4': 'video/mp4',
++    '.mov': 'video/quicktime',
++    '.webm': 'video/webm',
++    '.mkv': 'video/x-matroska',
++    '.avi': 'video/x-msvideo',
++    '.3gp': 'video/3gpp',
++    '.m4v': 'video/x-m4v',
++    '.mpg': 'video/mpeg',
++    '.mpeg': 'video/mpeg'
++  };
++
++  const filePath = await new Promise((resolve, reject) => {
++    console.log("Select a file with contentHub");
++    const electronExe = process.execPath; // chemin de l'exécutable Electron
++
++    const scriptPath = path.resolve(
++      path.dirname(electronExe),
++      '../../utils/select-file.sh'
++    );
++    execFile(
++      scriptPath,
++      [],
++      (error, stdout) => {
++        if (error) {
++          reject(error);
++          return;
++        }
++
++        resolve(stdout.trim());
++      }
++    );
++  });
++
++  if (!filePath) {
++    return { canceled: true };
++  }
++
++  const [data, stats] = await Promise.all([
++    readFile(filePath),
++    stat(filePath)
++  ]);
++
++  const fileType =
++    MIME_BY_EXT[extname(filePath).toLowerCase()] ||
++    'application/octet-stream';
++  
++  return {
++    canceled: false,
++    data: data.buffer.slice(
++      data.byteOffset,
++      data.byteOffset + data.byteLength
++    ),
++    name: basename(filePath),
++    type: fileType,
++    lastModified: stats.mtimeMs
++  };
++});
++
++const downloadDir =
++  '/home/phablet/.cache/min.pparent/downloads';
++    
++function safeFilename(name) {
++  return String(name || 'download')
++    .replace(/[\/\\?%*:|"<>]/g, '_')
++    .replace(/\s+/g, ' ')
++    .trim();
++}
++
++function attachDownloadHandlerToSession (ses) {
++  if (!ses || handledSessions.has(ses)) return
++  handledSessions.add(ses)
++
++  console.log('[download] handler attached to session:', ses.getStoragePath?.())
++
++  ses.on('will-download', (event, item, wc) => {
++    console.log('[download] WILL DOWNLOAD FIRED')
++
++    try {
++      const filename = safeFilename(item.getFilename() || 'download')
++      const savePath = path.join(downloadDir, filename)
++
++      console.log('[download] webContents:', wc?.id)
++      console.log('[download] url:', item.getURL())
++      console.log('[download] savePath:', savePath)
++
++      item.setSavePath(savePath)
++
++      item.once('done', async (_event, state) => {
++        console.log('[download] done:', state)
++
++        if (state !== 'completed') return
++
++        const fileUrl = pathToFileURL(savePath).toString();
++        console.log('[download] opening:', fileUrl);
++        shell.openExternal(fileUrl).catch(err => {
++          console.error('[download] openExternal failed:', err);
++        });
++      })
++    } catch (err) {
++      console.error('[download] failed:', err)
++      event.preventDefault()
++    }
++  })
++}
++
++function registerDownloadHandler () {
++  attachDownloadHandlerToSession(session.defaultSession)
++
++  app.on('web-contents-created', (_event, wc) => {
++    console.log('[wc created]', wc.id, wc.getType?.(), wc.getURL?.())
++
++    attachDownloadHandlerToSession(wc.session)
++
++    wc.on('did-attach-webview', (_event, webviewContents) => {
++      console.log('[webview attached]', webviewContents.id, webviewContents.getURL?.())
++
++      attachDownloadHandlerToSession(webviewContents.session)
++    })
++  })
++}
++
+ function sendIPCToWindow (window, action, data) {
+@@ -369,2 +515,4 @@
+   registerBundleProtocol(session.defaultSession)
++  
++  registerDownloadHandler()
+
+--- a/scripts/buildPreload.js
++++ b/scripts/buildPreload.js
+@@ -7,2 +7,3 @@
+   'js/preload/default.js',
++  'js/preload/contentHub.js',
+   'js/preload/textExtractor.js',
+   
+--- /dev/null
++++ b/js/preload/contentHub.js
+@@ -0,0 +1,128 @@
++/* Replaces page file picker dialogs with a main-process controlled file selection. */
++
++var fileInputPickerRequests = new WeakSet()
++
++function isFileInput (element) {
++  return element && element.tagName === 'INPUT' && element.type === 'file'
++}
++
++function findFileInputInPath (event) {
++  var path = typeof event.composedPath === 'function' ? event.composedPath() : []
++
++  for (var i = 0; i < path.length; i++) {
++    if (isFileInput(path[i])) {
++      return path[i]
++    }
++  }
++
++  return null
++}
++
++function findFileInputTarget (event) {
++  var pathInput = findFileInputInPath(event)
++  if (pathInput) {
++    return pathInput
++  }
++
++  var target = event.target
++
++  if (isFileInput(target)) {
++    return target
++  }
++
++  if (target && typeof target.closest === 'function') {
++    var label = target.closest('label')
++
++    if (label) {
++      if (label.control && isFileInput(label.control)) {
++        return label.control
++      }
++
++      return label.querySelector('input[type=file]')
++    }
++
++    if (target.tagName === 'LABEL' && target.htmlFor && target.ownerDocument) {
++      var labelledInput = target.ownerDocument.getElementById(target.htmlFor)
++
++      if (isFileInput(labelledInput)) {
++        return labelledInput
++      }
++    }
++  }
++
++  return null
++}
++
++function cancelNativeFilePicker (event) {
++  event.preventDefault()
++  event.stopImmediatePropagation()
++}
++
++async function pickFileForInput (input) {
++  if (fileInputPickerRequests.has(input)) {
++    return
++  }
++
++  fileInputPickerRequests.add(input)
++
++  try {
++    var result = await ipc.invoke('pick-file', {
++      accept: input.accept,
++      multiple: input.multiple
++    })
++
++    if (!result || result.canceled) {
++      return
++    }
++
++    var file = new File([result.data], result.name, {
++      lastModified: result.lastModified,
++      type: result.type
++    })
++
++    var dataTransfer = new DataTransfer()
++    dataTransfer.items.add(file)
++    input.files = dataTransfer.files
++
++    input.dispatchEvent(new Event('input', { bubbles: true }))
++    input.dispatchEvent(new Event('change', { bubbles: true }))
++  } catch (e) {
++    console.error('Unable to replace the file picker result.', e)
++  } finally {
++    fileInputPickerRequests.delete(input)
++  }
++}
++
++function handleFileInputActivation (event) {
++  var input = findFileInputTarget(event)
++  if (!input) {
++    return
++  }
++
++  cancelNativeFilePicker(event)
++  pickFileForInput(input)
++}
++
++function blockFileInputEvent (event) {
++  var input = findFileInputTarget(event)
++  if (!input) {
++    return
++  }
++
++  cancelNativeFilePicker(event)
++}
++
++function isFileInputActivationKey (event) {
++  return event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar'
++}
++
++window.addEventListener('click', handleFileInputActivation, true)
++window.addEventListener('auxclick', handleFileInputActivation, true)
++window.addEventListener('mousedown', blockFileInputEvent, true)
++window.addEventListener('mouseup', blockFileInputEvent, true)
++window.addEventListener('touchstart', handleFileInputActivation, true)
++window.addEventListener('keydown', function (event) {
++  if (isFileInputActivationKey(event)) {
++    handleFileInputActivation(event)
++  }
++}, true)
+

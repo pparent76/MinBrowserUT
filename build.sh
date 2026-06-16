@@ -52,7 +52,7 @@ echo "[2/10] Applying patches"
     if [ ! -e ".contentHub.patch-applyed" ]; then
         echo "Apply contentHub.patch"
         patch -p1 < ${ROOT}/patches/Min/contentHub.patch
-        touch contentHub.patch-applyed
+        touch .contentHub.patch-applyed
     fi
     
 # ==============================
@@ -109,18 +109,18 @@ echo "[3/10] Building Min..."
     echo "--->Done building"
   else
      echo "--->Build Min"
-#     
-#      PATH=$PATH:${BUILD_DIR}/.clickable/home/.local/share/pnpm/
-#      source ${BUILD_DIR}/.clickable/home/.bashrc
-#      export NVM_DIR="$HOME/.nvm"
-#      . "$NVM_DIR/nvm.sh" || true # This loads nvm    
-#      nvm use 24.15.0
-#      
-#     sleep 5;
-#     # This is the equivalent of 'npm run build-linux' with some adjustments
-#     pnpm run build
-#     node ./scripts/buildDebian.js
-#     echo "--->Done building"
+    
+     PATH=$PATH:${BUILD_DIR}/.clickable/home/.local/share/pnpm/
+     source ${BUILD_DIR}/.clickable/home/.bashrc
+     export NVM_DIR="$HOME/.nvm"
+     . "$NVM_DIR/nvm.sh" || true # This loads nvm    
+     nvm use 24.15.0
+     
+    sleep 5;
+    # This is the equivalent of 'npm run build-linux' with some adjustments
+    pnpm run build
+    node ./scripts/buildDebian.js
+    echo "--->Done building"
   fi
 
   
@@ -259,6 +259,7 @@ mkdir -p "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/sleep.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/mkdir.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/get-scale.sh "$INSTALL_DIR/utils/"
+cp ${ROOT}/utils/select-file.sh "$INSTALL_DIR/utils/"
 
 echo "Copying libraries dependencies..."
 cd ${BUILD_DIR}
@@ -281,6 +282,7 @@ cp *_extract_chsdjksd/usr/bin/md5sum "$INSTALL_DIR/bin/"
 cp ${BUILD_DIR}/xdg-open/build/xdg-open $INSTALL_DIR/bin/
 
 
+chmod +x $INSTALL_DIR/utils/select-file.sh
 chmod +x $INSTALL_DIR/utils/sleep.sh
 chmod +x $INSTALL_DIR/utils/mkdir.sh
 chmod +x $INSTALL_DIR/utils/get-scale.sh
