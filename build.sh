@@ -19,7 +19,8 @@ INSTALL_DIR="${BUILD_DIR}/install"
 echo "[1/10] Download Min source from github"
 
 cd ${BUILD_DIR}
-min_download_url=https://github.com/minbrowser/min/archive/refs/tags/v1.35.5.tar.gz
+ver="1.35.6"
+min_download_url=https://github.com/minbrowser/min/archive/refs/tags/v$ver.tar.gz
 
 if [ ! -e "Min" ]; then
     mkdir -p "Min"
@@ -60,7 +61,7 @@ echo "[2/10] Applying patches"
 # ==============================
 echo "[3/10] Building Min..."
 
- if [ ! -f ${BUILD_DIR}/Min/dist/app/min-1.35.5-arm64.deb ]; then
+ if [ ! -f ${BUILD_DIR}/Min/dist/app/min-$ver-arm64.deb ]; then
     PATH=$PATH:${BUILD_DIR}/.clickable/home/.local/share/pnpm/
     
     echo "---> Installing nvm"
@@ -207,7 +208,7 @@ dpkg-deb -x "coreutils_9.4-3ubuntu6_arm64.deb" "coreutils_9.4-3ubuntu6_arm64.deb
 
 
 
-cp ${BUILD_DIR}/Min/dist/app/min-1.35.5-arm64.deb "${BUILD_DIR}/pkg3.deb"
+cp ${BUILD_DIR}/Min/dist/app/min-$ver-arm64.deb "${BUILD_DIR}/pkg3.deb"
 rm -rvf "pkg3_extract_chsdjksd" || true
 mkdir "pkg3_extract_chsdjksd"
 dpkg-deb -x "pkg3.deb" "pkg3_extract_chsdjksd"
