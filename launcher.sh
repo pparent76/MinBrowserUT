@@ -41,18 +41,21 @@ gpuoptions="--use-gl=egl --enable-gpu-rasterization --enable-zero-copy --ignore-
 ###################################################
 # Handle customUserAgent
 ####################################################
+if [ ! -d "utils/mkdir.sh /home/phablet/.config/min.pparent/Min/" ]; then 
+    utils/mkdir.sh /home/phablet/.config/min.pparent/Min/
+fi
+
 CONFIGFILE="/home/phablet/.config/min.pparent/Min/settings.json"
-utils/mkdir.sh /home/phablet/.config/min.pparent/Min/
 UA="\"customUserAgent\":\"Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/150.0.0.0 Safari/537.36\""
 ADDBLOCK="\"filtering\":{\"blockingLevel\":2,\"contentTypes\":[],\"exceptionDomains\":[]}"
 UPDATE="\"updateNotificationsEnabled\":false"
 STATS="\"collectUsageStats\":false"
 TITLEBAR="\"useSeparateTitlebar\":true"
 
-grep -qF "$UA" $CONFIGFILE &&
-grep -qF "$UPDATE" $CONFIGFILE &&
-grep -qF "$STATS" $CONFIGFILE &&
-grep -qF "$TITLEBAR" $CONFIGFILE
+utils/check-conf.sh $CONFIGFILE "$UA" &&
+utils/check-conf.sh $CONFIGFILE "$UPDATE"&&
+utils/check-conf.sh $CONFIGFILE "$STATS"&&
+utils/check-conf.sh $CONFIGFILE "$TITLEBAR"
 if [ "$?" -ne "0" ]; then
 newjson="{$ADDBLOCK,$UPDATE,$STATS,$TITLEBAR,$UA}"
 printf '%s\n' "$newjson" > "$CONFIGFILE"

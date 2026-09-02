@@ -261,6 +261,7 @@ cp ${ROOT}/utils/sleep.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/mkdir.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/get-scale.sh "$INSTALL_DIR/utils/"
 cp ${ROOT}/utils/select-file.sh "$INSTALL_DIR/utils/"
+cp ${ROOT}/utils/check-conf.sh "$INSTALL_DIR/utils/"
 
 echo "Copying libraries dependencies..."
 cd ${BUILD_DIR}
@@ -283,6 +284,7 @@ cp *_extract_chsdjksd/usr/bin/md5sum "$INSTALL_DIR/bin/"
 cp ${BUILD_DIR}/xdg-open/build/xdg-open $INSTALL_DIR/bin/
 
 
+chmod +x $INSTALL_DIR/utils/check-conf.sh
 chmod +x $INSTALL_DIR/utils/select-file.sh
 chmod +x $INSTALL_DIR/utils/sleep.sh
 chmod +x $INSTALL_DIR/utils/mkdir.sh
