@@ -43,9 +43,20 @@ gpuoptions="--use-gl=egl --enable-gpu-rasterization --enable-zero-copy --ignore-
 ####################################################
 CONFIGFILE="/home/phablet/.config/min.pparent/Min/settings.json"
 utils/mkdir.sh /home/phablet/.config/min.pparent/Min/
-UA="Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/148.0.0.0 Safari/537.36"
-newjson="{\"filtering\":{\"blockingLevel\":2,\"contentTypes\":[],\"exceptionDomains\":[]},\"updateNotificationsEnabled\":false,\"collectUsageStats\":false,\"useSeparateTitlebar\":true,\"customUserAgent\":\"$UA\"}"
+UA="\"customUserAgent\":\"Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/150.0.0.0 Safari/537.36\""
+ADDBLOCK="filtering\":{\"blockingLevel\":2,\"contentTypes\":[],\"exceptionDomains\":[]}"
+UPDATE="\"updateNotificationsEnabled\":false"
+STATS="\"collectUsageStats\":false"
+TITLEBAR="\"useSeparateTitlebar\":true"
+
+grep -qF "$UA" $CONFIGFILE &&
+grep -qF "$UPDATE" $CONFIGFILE &&
+grep -qF "$STATS" $CONFIGFILE &&
+grep -qF "$TITLEBAR" $CONFIGFILE
+if [ "$?" -ne "0" ]; then
+newjson="{$ADDBLOCK,$UPDATE,$STATS,$TITLEBAR,$UA}"
 printf '%s\n' "$newjson" > "$CONFIGFILE"
+fi
 
 
 #Start a dummy Qt app called "placeholder-killer" to realease lomiri from its waiting, if necessary (not necessary with latest lomiri)
