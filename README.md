@@ -4,4 +4,4 @@ This repository create a .click package from latest release of Min browser
 
 https://github.com/minbrowser/min
 
-It uses binaries compiled by the project and does not recompile binaries for Min
+It applies a few small patches to the official code, and recompiles the binaries
