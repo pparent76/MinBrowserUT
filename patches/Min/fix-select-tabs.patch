@@ -1,0 +1,75 @@
+diff --git a/js/preload/fixSelects.js b/js/preload/fixSelects.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..05562354afb2642425d6814ee1290b6643201447
+--- /dev/null
++++ b/js/preload/fixSelects.js
+@@ -0,0 +1,31 @@
++var selectStyleWebFrame = require('electron').webFrame
++
++const pageSelectStyles = `
++@layer min-browser-defaults {
++  select {
++    appearance: base-select !important;
++    min-width: 225px;
++    padding: 0.2em 0.5em;
++  }
++
++  select::picker(select) {
++    appearance: base-select !important;
++    border-radius: 0.25em;
++    padding: 0.25em;
++  }
++
++  select::picker-icon {
++    content: "▾";
++    font-size: 0.75em;
++    margin-left: auto;
++    padding-left: 0.75em;
++    opacity: 0.66;
++  }
++}
++`
++
++window.addEventListener('DOMContentLoaded', function () {
++  selectStyleWebFrame.insertCSS(pageSelectStyles, { cssOrigin: 'author' }).catch(function (error) {
++    console.warn('Failed to add page select styles', error)
++  })
++}, { once: true })
+
+diff --git a/scripts/buildPreload.js b/scripts/buildPreload.js
+index e4fd11b651fa2b4f188a76cd08f26ad759870e8b..a4d8f6ad0743a68829ddb6009532211429e09a77 100644
+--- a/scripts/buildPreload.js
++++ b/scripts/buildPreload.js
+@@ -1,31 +1,32 @@
+ const path = require('path')
+ const fs = require('fs')
+ 
+ const outFile = path.resolve(__dirname, '../dist/preload.js')
+ 
+ const modules = [
+   'js/preload/default.js',
+   'js/preload/contentHub.js',
++  'js/preload/fixSelects.js',
+   'js/preload/textExtractor.js',
+   'js/preload/readerDetector.js',
+   'js/preload/siteUnbreak.js',
+   'js/util/settings/settingsPreload.js',
+   'js/preload/passwordFill.js',
+   'js/preload/translate.js',
+ ]
+ 
+ function buildPreload() {
+   /* concatenate modules */
+   let output = ''
+   modules.forEach(function (script) {
+     output += fs.readFileSync(path.resolve(__dirname, '../', script)) + ';\n'
+   })
+ 
+   fs.writeFileSync(outFile, output, 'utf-8')
+ }
+ 
+ if (module.parent) {
+   module.exports = buildPreload
+ } else {
+   buildPreload()
+ }

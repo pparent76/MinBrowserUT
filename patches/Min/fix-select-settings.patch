@@ -1,0 +1,70 @@
+diff --git a/pages/settings/settings.css b/pages/settings/settings.css
+index 34f5ee524252251cc18320b5e3d3e1065b368b54..c76251a2da42ad51327c4cc570d0024c0ca0e279 100644
+--- a/pages/settings/settings.css
++++ b/pages/settings/settings.css
+@@ -28,51 +28,65 @@ html {
+   color: #fff;
+ }
+ 
+ .container {
+   max-width: 1000px;
+   margin: auto;
+   padding: 0 1em;
+ }
+ 
+ .settings-container {
+   max-width: 1000px;
+   margin: 2.25em auto;
+   padding: 0 1em;
+ }
+ .settings-container .setting-option + .setting-option {
+   margin: 0.5em 0;
+ }
+ 
+ .setting-section {
+   font-size: 0; /* avoid adding space between inline-block children */
+ }
+ .setting-section:not(:only-of-type) {
+   padding: 0.5rem 0;
+ }
+ .setting-section select {
++  appearance: base-select;
+   min-width: 225px;
++  padding: 0.2em 0.5em;
++}
++.setting-section select::picker(select) {
++  appearance: base-select;
++  border-radius: 0.25em;
++  padding: 0.25em;
++}
++.setting-section select::picker-icon {
++  content: "▾";
++  font-size: 0.75em;
++  margin-left: auto;
++  padding-left: 0.75em;
++  opacity: 0.66;
+ }
+ .setting-section input[type="checkbox"] {
+   vertical-align: middle;
+ }
+ .setting-section input[type="checkbox"] + label {
+   vertical-align: middle;
+ }
+ .setting-section input + label {
+   padding-left: 0.33em;
+ }
+ .setting-section label + input,
+ .setting-section label + textarea,
+ .setting-section label + select {
+   margin-left: 0.66em;
+ }
+ .setting-secondary-label {
+   padding-left: 1.18em;
+   padding-top: 0.2em;
+ }
+ .banner {
+   padding: 1em;
+   position: sticky;
+   bottom: -1px;
+   left: 0;
+   width: 100%;

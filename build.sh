@@ -56,6 +56,20 @@ echo "[2/10] Applying patches"
         touch .contentHub.patch-applyed
     fi
     
+    #Patch to make the app compatible with contentHub
+    if [ ! -e ".fix-select-settings.patch-applyed" ]; then
+        echo "Apply fix-select-settings.patch"
+        patch -p1 < ${ROOT}/patches/Min/fix-select-settings.patch
+        touch .fix-select-settings.patch-applyed
+    fi   
+    
+    #Patch to make the app compatible with contentHub
+    if [ ! -e ".fix-select-tabs.patch-applyed" ]; then
+        echo "Apply fix-select-tabs.patch"
+        patch -p1 < ${ROOT}/patches/Min/fix-select-tabs.patch
+        touch .fix-select-tabs.patch-applyed
+    fi     
+    
 # ==============================
 # STEP 3: Build Signal-Desktop
 # ==============================
