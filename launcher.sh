@@ -89,13 +89,14 @@ ADDBLOCK="\"filtering\":{\"blockingLevel\":2,\"contentTypes\":[],\"exceptionDoma
 UPDATE="\"updateNotificationsEnabled\":false"
 STATS="\"collectUsageStats\":false"
 TITLEBAR="\"useSeparateTitlebar\":true"
+STARTUPTAB="\"startupTabOption\":3"
 
 inject_conf "$ADDBLOCK"
 inject_conf "$UPDATE"   
 inject_conf "$STATS"    
 inject_conf "$TITLEBAR" 
 inject_conf "$UA"       
-
+inject_conf "$STARTUPTAB"    
 
 #Start a dummy Qt app called "placeholder-killer" to realease lomiri from its waiting, if necessary (not necessary with latest lomiri)
 #Version 1.2: 2abe4aa39f76b1526c334afdfeef309b  /lib/aarch64-linux-gnu/liblomiri-private.so
