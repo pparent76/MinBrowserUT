@@ -296,3 +296,213 @@
 +  }
 +}, true)
 
+diff --git a/js/newTabPage.js b/js/newTabPage.js
+index ab7b0f88622e8cab8ef544150e15cd10818e7de3..feb02887f9d3ff6a33b8eb40b9df5cd640d15085 100644
+--- a/js/newTabPage.js
++++ b/js/newTabPage.js
+@@ -14,51 +14,50 @@ const newTabPage = {
+         URL.revokeObjectURL(newTabPage.blobInstance)
+         newTabPage.blobInstance = null
+       }
+       if (err) {
+         newTabPage.background.hidden = true
+         newTabPage.hasBackground = false
+         document.body.classList.remove('ntp-has-background')
+         newTabPage.deleteBackground.hidden = true
+       } else {
+         const blob = new Blob([data], { type: 'application/octet-binary' })
+         const url = URL.createObjectURL(blob)
+         newTabPage.blobInstance = url
+         newTabPage.background.src = url
+ 
+         newTabPage.background.hidden = false
+         newTabPage.hasBackground = true
+         document.body.classList.add('ntp-has-background')
+         newTabPage.deleteBackground.hidden = false
+       }
+     })
+   },
+   initialize: function () {
+     newTabPage.reloadBackground()
+ 
+     newTabPage.picker.addEventListener('click', async function () {
+-      var filePath = await ipc.invoke('showOpenDialog', {
+-        filters: [
+-          { name: 'Image files', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }
+-        ]
++      var result = await ipc.invoke('pick-file', {
++        accept: 'image/jpeg,image/png,image/gif,image/webp',
++        multiple: false
+       })
+ 
+-      if (!filePath) {
++      if (!result || result.canceled) {
+         return
+       }
+ 
+-      await fs.promises.copyFile(filePath[0], newTabPage.imagePath)
++      await fs.promises.writeFile(newTabPage.imagePath, Buffer.from(result.data))
+       newTabPage.reloadBackground()
+     })
+ 
+     newTabPage.deleteBackground.addEventListener('click', async function () {
+       await fs.promises.unlink(newTabPage.imagePath)
+       newTabPage.reloadBackground()
+     })
+ 
+     statistics.registerGetter('ntpHasBackground', function () {
+       return newTabPage.hasBackground
+     })
+   }
+ }
+ 
+ module.exports = newTabPage
+
+diff --git a/js/passwordManager/passwordViewer.js b/js/passwordManager/passwordViewer.js
+index f3967414ecc0252cc4f4adaa59b1a09382f6ef92..c2239eedca38d3a12307ac66509b0946d03427d9 100644
+--- a/js/passwordManager/passwordViewer.js
++++ b/js/passwordManager/passwordViewer.js
+@@ -122,60 +122,58 @@ const passwordViewer = {
+ 
+         passwordViewer._renderPasswordList(credentials)
+       })
+     })
+   },
+   importCredentials: async function () {
+     PasswordManagers.getConfiguredPasswordManager().then(async function (manager) {
+       if (!manager.importCredentials || !manager.getAllCredentials) {
+         throw new Error('unsupported password manager')
+       }
+ 
+       const credentials = await manager.getAllCredentials()
+       const shouldShowConsent = credentials.length > 0
+ 
+       if (shouldShowConsent) {
+         const securityConsent = ipcRenderer.sendSync('prompt', {
+           text: l('importCredentialsConfirmation'),
+           ok: l('dialogConfirmButton'),
+           cancel: l('dialogCancelButton'),
+           width: 400,
+           height: 200
+         })
+         if (!securityConsent) return
+       }
+ 
+-      const filePaths = await ipcRenderer.invoke('showOpenDialog', {
+-        filters: [
+-          { name: 'CSV', extensions: ['csv'] },
+-          { name: 'All Files', extensions: ['*'] }
+-        ]
++      const result = await ipcRenderer.invoke('pick-file', {
++        accept: '.csv',
++        multiple: false
+       })
+ 
+-      if (!filePaths || !filePaths[0]) return
++      if (!result || result.canceled) return
+ 
+-      const fileContents = fs.readFileSync(filePaths[0], 'utf8')
++      const fileContents = Buffer.from(result.data).toString('utf8')
+ 
+       manager.importCredentials(fileContents).then(function (credentials) {
+         if (credentials.length === 0) return
+         passwordViewer._renderPasswordList(credentials)
+       })
+     })
+   },
+   exportCredentials: function () {
+     PasswordManagers.getConfiguredPasswordManager().then(function (manager) {
+       if (!manager.getAllCredentials) {
+         throw new Error('unsupported password manager')
+       }
+ 
+       const securityConsent = ipcRenderer.sendSync('prompt', {
+         text: l('exportCredentialsConfirmation'),
+         ok: l('dialogConfirmButton'),
+         cancel: l('dialogCancelButton'),
+         width: 400,
+         height: 200
+       })
+       if (!securityConsent) return
+ 
+       manager.getAllCredentials().then(function (credentials) {
+         if (credentials.length === 0) return
+
+diff --git a/js/searchbar/customBangs.js b/js/searchbar/customBangs.js
+index b71822dddb44b0ae62db3bddf926443c4e3c6688..17ef4e715a759ff403397435a8665ef15f7ae2bd 100644
+--- a/js/searchbar/customBangs.js
++++ b/js/searchbar/customBangs.js
+@@ -306,66 +306,60 @@ function initialize () {
+         if (currentTask.id === taskToClose.id) {
+           taskOverlay.show()
+           setTimeout(function () {
+             taskOverlay.hide()
+           }, 600)
+         }
+       }
+     }
+   })
+ 
+   bangsPlugin.registerCustomBang({
+     phrase: '!nametask',
+     snippet: l('nameTask'),
+     isAction: false,
+     fn: function (text) {
+       tasks.update(tasks.getSelected().id, {name: text})
+     }
+   })
+ 
+   bangsPlugin.registerCustomBang({
+     phrase: '!importbookmarks',
+     snippet: l('importBookmarks'),
+     icon: 'carbon:upload',
+     isAction: true,
+     fn: async function () {
+-      const filePath = await ipc.invoke('showOpenDialog', {
+-        filters: [
+-          { name: 'HTML files', extensions: ['htm', 'html'] }
+-        ]
++      const result = await ipc.invoke('pick-file', {
++        accept: '.htm,.html',
++        multiple: false
+       })
+ 
+-      if (!filePath) {
++      if (!result || result.canceled) {
+         return
+       }
+-      fs.readFile(filePath[0], 'utf-8', function (err, data) {
+-        if (err || !data) {
+-          console.warn(err)
+-          return
+-        }
+-        bookmarkConverter.import(data)
+-      })
++
++      bookmarkConverter.import(Buffer.from(result.data).toString('utf8'))
+     }
+   })
+ 
+   bangsPlugin.registerCustomBang({
+     phrase: '!exportbookmarks',
+     snippet: l('exportBookmarks'),
+     icon: 'carbon:download',
+     isAction: true,
+     fn: async function () {
+       const data = await bookmarkConverter.exportAll()
+       // save the result
+       const savePath = await ipc.invoke('showSaveDialog', { defaultPath: 'bookmarks.html' })
+       require('fs').writeFileSync(savePath, data)
+     }
+   })
+ 
+   bangsPlugin.registerCustomBang({
+     phrase: '!addbookmark',
+     snippet: l('addBookmark'),
+     icon: 'carbon:star',
+     fn: function (text) {
+       const url = tabs.get(tabs.getSelected()).url
+       if (url) {
+         places.updateItem(url, {
+           isBookmarked: true,
+
