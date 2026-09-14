@@ -46,20 +46,55 @@ if [ ! -d "utils/mkdir.sh /home/phablet/.config/min.pparent/Min/" ]; then
 fi
 
 CONFIGFILE="/home/phablet/.config/min.pparent/Min/settings.json"
+CHECKFILE="/home/phablet/.config/min.pparent/settings.allready.injected.json"
+
+if [ ! -s "$CONFIGFILE" ]; then
+    printf '%s\n' '{}' > "$CONFIGFILE"
+fi
+
+if [ ! -s "$CHECKFILE" ]; then
+    printf '%s\n' '{}' > "$CHECKFILE"
+fi
+
+
+inject_conf()
+{
+    local value="$1"
+    local patch
+    local new_config
+    local new_check
+
+    if utils/check-conf.sh "$CHECKFILE" "$value"; then
+        return 0
+    fi
+
+    patch="{$value}"
+
+    new_config="$(
+        bin/jq -c --argjson patch "$patch" '. * $patch' "$CONFIGFILE"
+    )" || return 1
+
+    new_check="$(
+        bin/jq -c --argjson patch "$patch" '. * $patch' "$CHECKFILE"
+    )" || return 1
+
+    # On ne modifie les fichiers qu'une fois les deux jq réussis.
+    printf '%s\n' "$new_config" > "$CONFIGFILE"
+    printf '%s\n' "$new_check" > "$CHECKFILE"
+}
+
+#Inject these values into the config of Min if it was not allready done
 UA="\"customUserAgent\":\"Mozilla/5.0 (Linux; Ubuntu 24.04 like Android 9) AppleWebKit/537.36 Chrome/150.0.0.0 Safari/537.36\""
 ADDBLOCK="\"filtering\":{\"blockingLevel\":2,\"contentTypes\":[],\"exceptionDomains\":[]}"
 UPDATE="\"updateNotificationsEnabled\":false"
 STATS="\"collectUsageStats\":false"
 TITLEBAR="\"useSeparateTitlebar\":true"
 
-utils/check-conf.sh $CONFIGFILE "$UA" &&
-utils/check-conf.sh $CONFIGFILE "$UPDATE"&&
-utils/check-conf.sh $CONFIGFILE "$STATS"&&
-utils/check-conf.sh $CONFIGFILE "$TITLEBAR"
-if [ "$?" -ne "0" ]; then
-newjson="{$ADDBLOCK,$UPDATE,$STATS,$TITLEBAR,$UA}"
-printf '%s\n' "$newjson" > "$CONFIGFILE"
-fi
+inject_conf "$ADDBLOCK"
+inject_conf "$UPDATE"   
+inject_conf "$STATS"    
+inject_conf "$TITLEBAR" 
+inject_conf "$UA"       
 
 
 #Start a dummy Qt app called "placeholder-killer" to realease lomiri from its waiting, if necessary (not necessary with latest lomiri)

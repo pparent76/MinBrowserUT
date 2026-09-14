@@ -57,19 +57,12 @@ echo "[2/10] Applying patches"
     fi
     
     #Patch to make the app compatible with contentHub
-    if [ ! -e ".fix-select-settings.patch-applyed" ]; then
-        echo "Apply fix-select-settings.patch"
-        patch -p1 < ${ROOT}/patches/Min/fix-select-settings.patch
-        touch .fix-select-settings.patch-applyed
+    if [ ! -e ".fix-select.patch-applyed" ]; then
+        echo "Apply fix-select.patch"
+        patch -p1 < ${ROOT}/patches/Min/fix-select.patch
+        touch .fix-select.patch-applyed
     fi   
-    
-    #Patch to make the app compatible with contentHub
-    if [ ! -e ".fix-select-tabs.patch-applyed" ]; then
-        echo "Apply fix-select-tabs.patch"
-        patch -p1 < ${ROOT}/patches/Min/fix-select-tabs.patch
-        touch .fix-select-tabs.patch-applyed
-    fi     
-    
+
 # ==============================
 # STEP 3: Build Signal-Desktop
 # ==============================
@@ -205,7 +198,7 @@ DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -a arm64
 echo "[6/10] Install dependencies..."
 
 cd ${BUILD_DIR}
-DEPENDENCIES="libhybris-utils xdotool libmaliit-glib2 libxdo3 x11-utils libsecret-1-0"
+DEPENDENCIES="libhybris-utils xdotool libmaliit-glib2 libxdo3 x11-utils libsecret-1-0 libjq1 libonig5 jq"
 
 for dep in $DEPENDENCIES ; do
     apt download $dep:arm64
@@ -295,6 +288,7 @@ cp *_extract_chsdjksd/usr/bin/getprop "$INSTALL_DIR/bin/"
 cp *_extract_chsdjksd/usr/bin/xprop "$INSTALL_DIR/bin/"
 cp *_extract_chsdjksd/usr/bin/xev "$INSTALL_DIR/bin/"
 cp *_extract_chsdjksd/usr/bin/md5sum "$INSTALL_DIR/bin/"
+cp *_extract_chsdjksd/usr/bin/jq "$INSTALL_DIR/bin/"
 cp ${BUILD_DIR}/xdg-open/build/xdg-open $INSTALL_DIR/bin/
 
 
