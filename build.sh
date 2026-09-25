@@ -49,19 +49,26 @@ echo "[2/10] Applying patches"
         touch .fix-searchbar.patch-applyed
     fi    
 
+    #Patch to fix the menu
+    if [ ! -e ".fix-menu.patch-applyed" ]; then
+        echo "Apply fix-menu.patch"
+        patch -p1 < ${ROOT}/patches/Min/fix-menu.patch
+        touch .fix-menu.patch-applyed
+    fi    
+    
     #Patch to make the app compatible with contentHub
     if [ ! -e ".contentHub.patch-applyed" ]; then
         echo "Apply contentHub.patch"
         patch -p1 < ${ROOT}/patches/Min/contentHub.patch
         touch .contentHub.patch-applyed
     fi
-    
-    #Patch to make the app compatible with contentHub
+
+    #Patch to fix the selects
     if [ ! -e ".fix-select.patch-applyed" ]; then
         echo "Apply fix-select.patch"
         patch -p1 < ${ROOT}/patches/Min/fix-select.patch
         touch .fix-select.patch-applyed
-    fi   
+    fi      
 
 # ==============================
 # STEP 3: Build Signal-Desktop

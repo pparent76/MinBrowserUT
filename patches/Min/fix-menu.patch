@@ -1,0 +1,450 @@
+diff --git a/main/main.js b/main/main.js
+index 3d1ff2ab3fadbe98ac48ae06629061b138a013b7..16e7ea226c3fe45ebf65c0b23592cf654c0cb69f 100644
+--- a/main/main.js
++++ b/main/main.js
+@@ -52,51 +52,52 @@ if (process.platform === 'win32') {
+     }
+     if (require('electron-squirrel-startup')) {
+       app.quit()
+     }
+   })()
+ }
+ 
+ if (isDevelopmentMode) {
+   app.setPath('userData', app.getPath('userData') + '-development')
+ }
+ 
+ // workaround for flicker when focusing app (https://github.com/electron/electron/issues/17942)
+ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'true')
+ 
+ var userDataPath = app.getPath('userData')
+ 
+ settings.initialize(userDataPath)
+ 
+ if (settings.get('userSelectedLanguage')) {
+   app.commandLine.appendSwitch('lang', settings.get('userSelectedLanguage'))
+ }
+ 
+ const browserPage = 'min://app/index.html'
+ 
+ var mainMenu = null
+-var secondaryMenu = null
++var secondaryMenuWindow = null
++var secondaryAppMenu = null
+ var isFocusMode = false
+ var appIsReady = false
+ 
+ const isFirstInstance = app.requestSingleInstanceLock()
+ 
+ if (!isFirstInstance) {
+   app.quit()
+   return
+ }
+ 
+ var saveWindowBounds = function () {
+   if (windows.getCurrent()) {
+     var bounds = Object.assign(windows.getCurrent().getBounds(), {
+       maximized: windows.getCurrent().isMaximized()
+     })
+     fs.writeFileSync(path.join(userDataPath, 'windowBounds.json'), JSON.stringify(bounds))
+   }
+ }
+ 
+ function sendIPCToWindow (window, action, data) {
+   if (window && window.isDestroyed()) {
+     console.warn('ignoring message ' + action + ' sent to destroyed window')
+     return
+   }
+ 
+@@ -414,58 +415,186 @@ app.on('second-instance', function (e, argv, workingDir) {
+     if (windows.getCurrent().isMinimized()) {
+       windows.getCurrent().restore()
+     }
+     windows.getCurrent().focus()
+     // add a tab with the new URL
+     handleCommandLineArguments(argv)
+   }
+ })
+ 
+ /**
+  * Emitted when the application is activated, which usually happens when clicks on the applications's dock icon
+  * https://github.com/electron/electron/blob/master/docs/api/app.md#event-activate-os-x
+  *
+  * Opens a new tab when all tabs are closed, and min is still open by clicking on the application dock icon
+  */
+ app.on('activate', function (/* e, hasVisibleWindows */) {
+   if (!windows.getCurrent() && appIsReady) { // sometimes, the event will be triggered before the app is ready, and creating new windows will fail
+     createWindow()
+   }
+ })
+ 
+ ipc.on('focusMainWebContents', function () {
+   getWindowWebContents(windows.getCurrent()).focus()
+ })
+ 
++function serializeMenu (menu, path = []) {
++  return menu.items.reduce(function (items, item, index) {
++    if (!item.visible) {
++      return items
++    }
++
++    items.push({
++      path: path.concat(index),
++      type: item.type,
++      label: item.label,
++      accelerator: item.accelerator,
++      enabled: item.enabled,
++      checked: item.checked,
++      submenu: item.submenu ? serializeMenu(item.submenu, path.concat(index)) : null
++    })
++    return items
++  }, [])
++}
++
++function getMenuItem (menu, path) {
++  var item = null
++  var currentMenu = menu
++
++  path.forEach(function (index) {
++    item = currentMenu.items[index]
++    currentMenu = item.submenu
++  })
++  return item
++}
++
+ ipc.on('showSecondaryMenu', function (event, data) {
+-  if (!secondaryMenu) {
+-    secondaryMenu = buildAppMenu({ secondary: true })
++  const parentWindow = windows.windowFromContents(event.sender)?.win
++  if (!parentWindow) {
++    return
++  }
++
++  if (!secondaryAppMenu) {
++    secondaryAppMenu = buildAppMenu({ secondary: true })
++  }
++
++  if (secondaryMenuWindow && !secondaryMenuWindow.isDestroyed()) {
++    secondaryMenuWindow.destroy()
+   }
+-  secondaryMenu.popup({
+-    x: data.x,
+-    y: data.y
++
++  const contentBounds = parentWindow.getContentBounds()
++
++  // This is an actual child window rather than Menu.popup: Linux can therefore
++  // set WM_TRANSIENT_FOR directly while the renderer reproduces the old menu UI.
++  const secondaryMenu = new BrowserWindow({
++    parent: parentWindow,
++    show: false,
++    frame: false,
++    skipTaskbar: true,
++    resizable: false,
++    movable: false,
++    minimizable: false,
++    maximizable: false,
++    fullscreenable: false,
++    backgroundColor: '#ffffff',
++    x: contentBounds.x + data.x,
++    y: contentBounds.y + data.y,
++    width: 280,
++    height: 100,
++    webPreferences: {
++      nodeIntegration: true,
++      contextIsolation: false
++    }
++  })
++  secondaryMenuWindow = secondaryMenu
++
++  secondaryMenu.loadFile(path.join(__dirname, 'pages/secondaryMenu/index.html'))
++  secondaryMenu.webContents.once('did-finish-load', function () {
++    secondaryMenu.webContents.send('secondary-menu-data', serializeMenu(secondaryAppMenu))
++  })
++  secondaryMenu.once('ready-to-show', function () {
++    secondaryMenu.show()
++  })
++  secondaryMenu.on('blur', function () {
++    secondaryMenu.close()
+   })
++  secondaryMenu.on('closed', function () {
++    if (secondaryMenuWindow === secondaryMenu) {
++      secondaryMenuWindow = null
++    }
++  })
++})
++
++ipc.on('secondary-menu-resize', function (event, height) {
++  if (secondaryMenuWindow && event.sender === secondaryMenuWindow.webContents) {
++    const menuHeight = Math.max(40, Math.min(height, 600))
++    const bounds = secondaryMenuWindow.getBounds()
++    const workArea = electron.screen.getDisplayMatching(bounds).workArea
++    secondaryMenuWindow.setBounds({
++      x: clamp(bounds.x, workArea.x, workArea.x + workArea.width - bounds.width),
++      y: clamp(bounds.y, workArea.y, workArea.y + workArea.height - menuHeight),
++      width: bounds.width,
++      height: menuHeight
++    })
++  }
++})
++
++ipc.on('secondary-menu-close', function (event) {
++  if (secondaryMenuWindow && event.sender === secondaryMenuWindow.webContents) {
++    secondaryMenuWindow.close()
++  }
++})
++
++ipc.on('secondary-menu-select', function (event, itemPath) {
++  if (!secondaryMenuWindow || event.sender !== secondaryMenuWindow.webContents) {
++    return
++  }
++
++  const parentWindow = secondaryMenuWindow.getParentWindow()
++  const item = getMenuItem(secondaryAppMenu, itemPath)
++  secondaryMenuWindow.close()
++
++  if (item.click) {
++    item.click(item, parentWindow, { triggeredByAccelerator: false })
++  } else {
++    const contents = getWindowWebContents(parentWindow)
++    const role = item.role?.toLowerCase()
++    const roleActions = {
++      undo: 'undo',
++      redo: 'redo',
++      cut: 'cut',
++      copy: 'copy',
++      paste: 'paste',
++      pasteandmatchstyle: 'pasteAndMatchStyle',
++      selectall: 'selectAll'
++    }
++    if (role === 'togglefullscreen') {
++      parentWindow.setFullScreen(!parentWindow.isFullScreen())
++    } else if (roleActions[role]) {
++      contents[roleActions[role]]()
++    }
++  }
+ })
+ 
+ ipc.on('handoffUpdate', function(e, data) {
+   if (app.setUserActivity && data.url && data.url.startsWith('http')) {
+     app.setUserActivity('NSUserActivityTypeBrowsingWeb', {}, data.url)
+   } else if (app.invalidateCurrentActivity) {
+     app.invalidateCurrentActivity()
+   }
+ })
+ 
+ ipc.on('quit', function () {
+   app.quit()
+ })
+ 
+ ipc.on('tab-state-change', function(e, events) {
+   const sourceWindowId = windows.windowFromContents(e.sender)?.id
+   if (!sourceWindowId) {
+     console.warn('warning: received tab state update from window after destruction, ignoring')
+     return
+   }
+   windows.getAll().forEach(function(window) {
+     if (getWindowWebContents(window).id !== e.sender.id) {
+       getWindowWebContents(window).send('tab-state-change-receive', {
+         sourceWindowId,
+         events
+diff --git a/pages/secondaryMenu/index.html b/pages/secondaryMenu/index.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..85962c57e5abc43816db0c05f988b68977a09e8a
+--- /dev/null
++++ b/pages/secondaryMenu/index.html
+@@ -0,0 +1,13 @@
++<!doctype html>
++<html>
++  <head>
++    <meta charset="utf-8">
++    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
++    <title>Menu</title>
++    <link rel="stylesheet" href="menu.css">
++  </head>
++  <body>
++    <main id="menu" role="menu"></main>
++    <script src="menu.js"></script>
++  </body>
++</html>
+diff --git a/pages/secondaryMenu/menu.css b/pages/secondaryMenu/menu.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..3199ca1a7f4cef8a0c2603e19041622b16bab206
+--- /dev/null
++++ b/pages/secondaryMenu/menu.css
+@@ -0,0 +1,72 @@
++:root {
++  color-scheme: light dark;
++  font-family: system-ui, sans-serif;
++  font-size: 13px;
++}
++
++* {
++  box-sizing: border-box;
++}
++
++html,
++body {
++  margin: 0;
++  overflow: hidden;
++  background: Canvas;
++  color: CanvasText;
++}
++
++#menu {
++  padding: 5px;
++  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
++}
++
++.menu-item {
++  display: grid;
++  grid-template-columns: 18px minmax(0, 1fr) auto 12px;
++  gap: 6px;
++  align-items: center;
++  width: 100%;
++  min-height: 28px;
++  padding: 3px 7px;
++  border: 0;
++  border-radius: 4px;
++  background: transparent;
++  color: inherit;
++  font: inherit;
++  text-align: left;
++}
++
++.menu-item:focus,
++.menu-item:hover {
++  outline: 0;
++  background: Highlight;
++  color: HighlightText;
++}
++
++.menu-item:disabled {
++  opacity: 0.45;
++  background: transparent;
++  color: inherit;
++}
++
++.menu-label {
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++
++.accelerator {
++  opacity: 0.7;
++  white-space: nowrap;
++}
++
++.separator {
++  height: 1px;
++  margin: 5px 7px;
++  background: color-mix(in srgb, CanvasText 20%, transparent);
++}
++
++.arrow {
++  text-align: right;
++}
+diff --git a/pages/secondaryMenu/menu.js b/pages/secondaryMenu/menu.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..3598ef8c6902f472c373f3912348a45c3baeffef
+--- /dev/null
++++ b/pages/secondaryMenu/menu.js
+@@ -0,0 +1,97 @@
++const { ipcRenderer } = require('electron')
++
++const menu = document.getElementById('menu')
++const menuStack = []
++
++function formatAccelerator (accelerator) {
++  return (accelerator || '')
++    .replace('CmdOrCtrl', 'Ctrl')
++    .replace('Command', '⌘')
++    .replace('Cmd', '⌘')
++    .replace('Ctrl', 'Ctrl')
++    .replace('Alt', 'Alt')
++    .replace('Shift', 'Shift')
++}
++
++function render (items, parentLabel) {
++  menu.replaceChildren()
++
++  if (menuStack.length > 0) {
++    const back = createButton('‹', parentLabel, '', '')
++    back.addEventListener('click', function () {
++      const previous = menuStack.pop()
++      render(previous.items, previous.parentLabel)
++    })
++    menu.appendChild(back)
++    menu.appendChild(createSeparator())
++  }
++
++  items.forEach(function (item) {
++    if (item.type === 'separator') {
++      menu.appendChild(createSeparator())
++      return
++    }
++
++    const marker = item.type === 'checkbox' && item.checked ? '✓' : ''
++    const button = createButton(marker, item.label, formatAccelerator(item.accelerator), item.submenu ? '›' : '')
++    button.disabled = !item.enabled
++    button.addEventListener('click', function () {
++      if (item.submenu) {
++        menuStack.push({ items: items, parentLabel: parentLabel })
++        render(item.submenu, item.label)
++      } else {
++        ipcRenderer.send('secondary-menu-select', item.path)
++      }
++    })
++    menu.appendChild(button)
++  })
++
++  ipcRenderer.send('secondary-menu-resize', menu.scrollHeight)
++  menu.querySelector('.menu-item:not(:disabled)')?.focus()
++}
++
++function createButton (marker, label, accelerator, arrow) {
++  const button = document.createElement('button')
++  button.className = 'menu-item'
++  button.type = 'button'
++  button.setAttribute('role', 'menuitem')
++
++  ;[marker, label, accelerator, arrow].forEach(function (text, index) {
++    const span = document.createElement('span')
++    span.textContent = text
++    span.className = ['', 'menu-label', 'accelerator', 'arrow'][index]
++    button.appendChild(span)
++  })
++  return button
++}
++
++function createSeparator () {
++  const separator = document.createElement('div')
++  separator.className = 'separator'
++  separator.setAttribute('role', 'separator')
++  return separator
++}
++
++document.addEventListener('keydown', function (event) {
++  const buttons = Array.from(menu.querySelectorAll('.menu-item:not(:disabled)'))
++  const currentIndex = buttons.indexOf(document.activeElement)
++
++  if (event.key === 'Escape') {
++    ipcRenderer.send('secondary-menu-close')
++  } else if (event.key === 'ArrowDown') {
++    buttons[(currentIndex + 1) % buttons.length]?.focus()
++  } else if (event.key === 'ArrowUp') {
++    buttons[(currentIndex - 1 + buttons.length) % buttons.length]?.focus()
++  } else if (event.key === 'ArrowLeft' && menuStack.length > 0) {
++    buttons[0]?.click()
++  } else if (event.key === 'ArrowRight' || event.key === 'Enter' || event.key === ' ') {
++    document.activeElement?.click()
++  } else {
++    return
++  }
++  event.preventDefault()
++})
++
++ipcRenderer.once('secondary-menu-data', function (event, items) {
++  render(items, '')
++})
